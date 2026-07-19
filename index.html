@@ -64,6 +64,15 @@
           </button>
         </div>
 
+
+        <div class="card favorite-meals-card">
+          <div class="section-title-row">
+            <h3>♥ 도아가 잘 먹었어요</h3>
+            <span class="meta">1회부터 표시</span>
+          </div>
+          <div id="favoriteMealsList"></div>
+        </div>
+
         <div class="card">
           <div class="section-title-row">
             <h3>유통기한이 가까워요</h3>
@@ -192,6 +201,26 @@
       <button class="bottom-tab" data-tab="ingredients" type="button"><span class="tab-icon inventory-icon">🥩</span><span>재고</span></button>
       <button class="bottom-tab" data-tab="shopping" type="button"><span class="tab-icon">🛒</span><span>장보기</span></button>
     </nav>
+  </div>
+
+
+  <div id="mealEditModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="mealEditTitle">
+    <div class="modal-backdrop" id="mealEditBackdrop"></div>
+    <div class="modal-card">
+      <div class="section-title-row">
+        <h3 id="mealEditTitle">식단 수정</h3>
+        <button class="btn ghost compact" type="button" id="mealEditCloseButton">닫기</button>
+      </div>
+      <div class="meta" id="mealEditSubtitle"></div>
+      <label for="mealEditText">메뉴</label>
+      <textarea id="mealEditText" class="meal-edit-text" placeholder="메뉴별로 줄을 나눠 입력하세요"></textarea>
+      <div class="subsection-title">먹은 반응</div>
+      <div id="mealReactionRows" class="reaction-list"></div>
+      <div class="toolbar">
+        <button class="btn primary" type="button" id="mealEditSaveButton">저장</button>
+        <button class="btn danger" type="button" id="mealEditDeleteButton">식단 삭제</button>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

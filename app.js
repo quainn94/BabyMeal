@@ -5,7 +5,8 @@ const SUPABASE_KEY = 'sb_publishable_wUg7_jDdKtyXxx78kiN3Lg_NrTAwh_4';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let user = null;
-let state = { ingredients: [], plans: [], shopping: [] };
+let state = { ingredients: [], plans: [], shopping: [], reactions: [] };
+let mealEditor = { date: '', slot: '', reactions: {} };
 let ingredientFilter = '전체';
 let realtimeChannel = null;
 let weekStart = startOfWeek(new Date());
@@ -116,7 +117,7 @@ async function handleSession(session) {
   $('appView').classList.toggle('hidden', !user);
 
   if (!user) {
-    state = { ingredients: [], plans: [], shopping: [] };
+    state = { ingredients: [], plans: [], shopping: [], reactions: [] };
     if (realtimeChannel) {
       await sb.removeChannel(realtimeChannel);
       realtimeChannel = null;
@@ -135,19 +136,22 @@ async function loadAll() {
   if (!user) return;
   setLoading(true);
   try {
-    const [ingredientsResult, plansResult, shoppingResult] = await Promise.all([
+    const [ingredientsResult, plansResult, shoppingResult, reactionsResult] = await Promise.all([
       sb.from('ingredients').select('*').order('created_at', { ascending: false }),
       sb.from('meal_plans').select('*').order('meal_date', { ascending: true }).order('created_at', { ascending: true }),
-      sb.from('shopping_items').select('*').order('done', { ascending: true }).order('created_at', { ascending: false })
+      sb.from('shopping_items').select('*').order('done', { ascending: true }).order('created_at', { ascending: false }),
+      sb.from('meal_reactions').select('*').order('meal_date', { ascending: false }).order('created_at', { ascending: false })
     ]);
 
     if (ingredientsResult.error) throw ingredientsResult.error;
     if (plansResult.error) throw plansResult.error;
     if (shoppingResult.error) throw shoppingResult.error;
+    if (reactionsResult.error) throw reactionsResult.error;
 
     state.ingredients = ingredientsResult.data || [];
     state.plans = plansResult.data || [];
     state.shopping = shoppingResult.data || [];
+    state.reactions = reactionsResult.data || [];
     renderAll();
   } catch (error) {
     fail(error);
@@ -162,6 +166,7 @@ function subscribeRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients', filter: `user_id=eq.${user.id}` }, loadAll)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'meal_plans', filter: `user_id=eq.${user.id}` }, loadAll)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'shopping_items', filter: `user_id=eq.${user.id}` }, loadAll)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'meal_reactions', filter: `user_id=eq.${user.id}` }, loadAll)
     .subscribe();
 }
 
@@ -449,37 +454,81 @@ function menuLinesHtml(value, className = 'menu-line') {
   return splitMenuLines(value).map((line) => `<span class="${className}">${esc(line)}</span>`).join('');
 }
 
-async function editWeeklyCell(mealDate, mealSlot) {
+function reactionFor(mealDate, mealSlot, menuName) {
+  return state.reactions.find((item) => item.meal_date === mealDate && item.meal_slot === mealSlot && item.menu_name === menuName)?.reaction || '미기록';
+}
+
+function closeMealEditor() {
+  $('mealEditModal').classList.add('hidden');
+  mealEditor = { date: '', slot: '', reactions: {} };
+}
+
+function renderMealReactionRows() {
+  const lines = splitMenuLines($('mealEditText').value);
+  const next = {};
+  lines.forEach((line) => { next[line] = mealEditor.reactions[line] || reactionFor(mealEditor.date, mealEditor.slot, line); });
+  mealEditor.reactions = next;
+  $('mealReactionRows').innerHTML = lines.length ? lines.map((line) => {
+    const selected = next[line] || '미기록';
+    return `<div class="reaction-row"><div class="reaction-menu">${esc(line)}</div><div class="reaction-buttons">
+      ${['잘 먹음','보통','거부'].map((reaction) => `<button type="button" class="reaction-button ${selected === reaction ? 'selected' : ''}" data-menu="${esc(line)}" data-reaction="${reaction}">${reaction === '잘 먹음' ? '♥' : reaction === '보통' ? '•' : '×'} ${reaction}</button>`).join('')}
+    </div></div>`;
+  }).join('') : '<div class="empty">메뉴를 한 줄에 하나씩 입력해 주세요.</div>';
+  document.querySelectorAll('.reaction-button').forEach((button) => button.addEventListener('click', () => {
+    const menu = button.dataset.menu;
+    const reaction = button.dataset.reaction;
+    mealEditor.reactions[menu] = mealEditor.reactions[menu] === reaction ? '미기록' : reaction;
+    renderMealReactionRows();
+  }));
+}
+
+function editWeeklyCell(mealDate, mealSlot) {
   const entries = state.plans.filter((item) => item.meal_date === mealDate && item.meal_slot === mealSlot);
   const currentValue = entries.map((item) => item.menu_name).filter(Boolean).join('\n');
-  const nextValue = window.prompt(`${mealDate} ${mealSlot} 식단\n메뉴별로 줄을 나눠 입력하세요. 모두 지우고 확인하면 식단이 삭제됩니다.`, currentValue);
-  if (nextValue === null) return;
+  mealEditor = { date: mealDate, slot: mealSlot, reactions: {} };
+  splitMenuLines(currentValue).forEach((line) => { mealEditor.reactions[line] = reactionFor(mealDate, mealSlot, line); });
+  $('mealEditTitle').textContent = `${mealSlot} 식단`;
+  $('mealEditSubtitle').textContent = mealDate;
+  $('mealEditText').value = currentValue;
+  $('mealEditModal').classList.remove('hidden');
+  renderMealReactionRows();
+  $('mealEditText').focus();
+}
 
+async function saveMealEditor(deleteOnly = false) {
+  const mealDate = mealEditor.date;
+  const mealSlot = mealEditor.slot;
+  if (!mealDate || !mealSlot) return;
+  const lines = deleteOnly ? [] : splitMenuLines($('mealEditText').value);
+  if (deleteOnly && !confirm('이 식단과 반응 기록을 삭제할까요?')) return;
   setLoading(true);
   try {
-    const { error: deleteError } = await sb.from('meal_plans')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('meal_date', mealDate)
-      .eq('meal_slot', mealSlot);
-    if (deleteError) throw deleteError;
-
-    const cleaned = splitMenuLines(nextValue).join('\n');
-    if (cleaned) {
-      const { error: insertError } = await sb.from('meal_plans').insert({
-        user_id: user.id,
-        meal_date: mealDate,
-        meal_slot: mealSlot,
-        menu_name: cleaned
-      });
-      if (insertError) throw insertError;
+    const { error: planDeleteError } = await sb.from('meal_plans').delete().eq('user_id', user.id).eq('meal_date', mealDate).eq('meal_slot', mealSlot);
+    if (planDeleteError) throw planDeleteError;
+    const { error: reactionDeleteError } = await sb.from('meal_reactions').delete().eq('user_id', user.id).eq('meal_date', mealDate).eq('meal_slot', mealSlot);
+    if (reactionDeleteError) throw reactionDeleteError;
+    if (lines.length) {
+      const { error: planInsertError } = await sb.from('meal_plans').insert({ user_id: user.id, meal_date: mealDate, meal_slot: mealSlot, menu_name: lines.join('\n') });
+      if (planInsertError) throw planInsertError;
+      const reactionRows = lines.filter((line) => ['잘 먹음','보통','거부'].includes(mealEditor.reactions[line])).map((line) => ({
+        user_id: user.id, meal_date: mealDate, meal_slot: mealSlot, menu_name: line, reaction: mealEditor.reactions[line]
+      }));
+      if (reactionRows.length) {
+        const { error: reactionInsertError } = await sb.from('meal_reactions').insert(reactionRows);
+        if (reactionInsertError) throw reactionInsertError;
+      }
     }
+    closeMealEditor();
     await loadAll();
-  } catch (error) {
-    fail(error);
-  } finally {
-    setLoading(false);
-  }
+  } catch (error) { fail(error); } finally { setLoading(false); }
+}
+
+function mealLinesWithReactionHtml(value, mealDate, mealSlot, className = 'menu-line') {
+  return splitMenuLines(value).map((line) => {
+    const reaction = reactionFor(mealDate, mealSlot, line);
+    const mark = reaction === '잘 먹음' ? '<span class="reaction-mark good" title="잘 먹음">♥</span>' : reaction === '거부' ? '<span class="reaction-mark refuse" title="거부">×</span>' : '';
+    return `<span class="${className}">${esc(line)}${mark}</span>`;
+  }).join('');
 }
 
 function renderIngredients() {
@@ -530,7 +579,7 @@ function renderWeeklyPlan() {
       const entries = state.plans.filter((item) => item.meal_date === dateString && item.meal_slot === slot);
       const combinedMenu = entries.map((item) => item.menu_name).filter(Boolean).join('\n');
       return `<td class="${isToday ? 'today-column' : ''}"><button class="weekly-cell-button" type="button" onclick="editWeeklyCell('${dateString}','${slot}')" aria-label="${dateString} ${slot} 식단 수정">
-        ${combinedMenu ? menuLinesHtml(combinedMenu, 'weekly-menu-line') : '<span class="weekly-empty">비어 있음</span>'}
+        ${combinedMenu ? mealLinesWithReactionHtml(combinedMenu, dateString, slot, 'weekly-menu-line') : '<span class="weekly-empty">비어 있음</span>'}
       </button></td>`;
     }).join('');
     return `<tr><td>${slot}</td>${cells}</tr>`;
@@ -571,8 +620,16 @@ function renderHome() {
   $('todayMeals').innerHTML = todayMeals.length ? slotOrder.map((slot) => {
     const values = todayMeals.filter((item) => item.meal_slot === slot).map((item) => item.menu_name).filter(Boolean);
     if (!values.length) return '';
-    return `<div class="today-meal"><div class="today-meal-slot">${esc(slot)}</div><div class="today-meal-menu">${menuLinesHtml(values.join('\n'), 'today-menu-line')}</div></div>`;
+    return `<div class="today-meal"><div class="today-meal-slot">${esc(slot)}</div><div class="today-meal-menu">${mealLinesWithReactionHtml(values.join('\n'), today, slot, 'today-menu-line')}</div></div>`;
   }).join('') : '<div class="empty">오늘 식단이 아직 비어 있어요.</div>';
+
+  const goodCounts = state.reactions.filter((item) => item.reaction === '잘 먹음').reduce((acc, item) => {
+    const key = item.menu_name.trim();
+    if (key) acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+  const favorites = Object.entries(goodCounts).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'ko')).slice(0, 8);
+  $('favoriteMealsList').innerHTML = favorites.length ? `<div class="favorite-list">${favorites.map(([name, count]) => `<div class="favorite-row"><span><span class="favorite-heart">♥</span>${esc(name)}</span><strong>${count}회</strong></div>`).join('')}</div>` : '<div class="empty">잘 먹은 메뉴를 기록하면 여기에 모아드려요.</div>';
 
   const activeIngredients = state.ingredients.filter((item) => !item.depleted);
   const expirySoon = activeIngredients
@@ -615,6 +672,12 @@ function bindEvents() {
   }));
 
   document.querySelectorAll('.status-option').forEach((button) => button.addEventListener('click', () => setStatus(button.dataset.status)));
+  $('mealEditText').addEventListener('input', renderMealReactionRows);
+  $('mealEditCloseButton').addEventListener('click', closeMealEditor);
+  $('mealEditBackdrop').addEventListener('click', closeMealEditor);
+  $('mealEditSaveButton').addEventListener('click', () => saveMealEditor(false));
+  $('mealEditDeleteButton').addEventListener('click', () => saveMealEditor(true));
+
   $('ingredientSaveButton').addEventListener('click', saveIngredient);
   $('ingredientCancelButton').addEventListener('click', resetIngredientForm);
 
