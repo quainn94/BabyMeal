@@ -223,15 +223,70 @@ function fail(error){
  alert(error?.message || "처리 중 오류가 발생했어.");
 }
 
-async function signUp(){
- const email=$("authEmail").value.trim(), password=$("authPassword").value;
- if(!email||password.length<6)return message("이메일과 6자 이상 비밀번호를 입력해줘.",true);
- const {data,error}=await sb.auth.signUp({email,password});
- if(error)return message(error.message,true);
- if(data.session) message("가입과 로그인이 완료됐어.");
- else message("가입했어. 이메일 확인 메일이 왔다면 확인한 뒤 로그인해줘.");
+async function signup() {
+  const email = $("authEmail").value.trim().toLowerCase();
+  const password = $("authPassword").value;
+
+  if (!email || password.length < 6) {
+    return message("이메일과 6자 이상 비밀번호를 입력해 주세요.", true);
+  }
+
+  setLoading(true);
+
+  try {
+    const { data, error } = await sb.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`
+      }
+    });
+
+    if (error) {
+      const errorText = error.message || "";
+
+      if (
+        error.status === 429 ||
+        /rate limit|too many requests/i.test(errorText)
+      ) {
+        return message(
+          "가입 요청이 너무 많습니다. 잠시 기다린 후 한 번만 다시 시도해 주세요.",
+          true
+        );
+      }
+
+      if (/invalid.*email|email.*invalid/i.test(errorText)) {
+        return message("이메일 주소가 올바른지 다시 확인해 주세요.", true);
+      }
+
+      return message(`가입 실패: ${errorText}`, true);
+    }
+
+    if (
+      data.user &&
+      Array.isArray(data.user.identities) &&
+      data.user.identities.length === 0
+    ) {
+      return message(
+        "이미 가입된 이메일일 수 있습니다. 로그인해 보세요.",
+        true
+      );
+    }
+
+    if (data.session) {
+      message("가입과 로그인이 완료되었습니다.");
+    } else {
+      message(
+        "가입 요청이 완료되었습니다. 이메일 인증 후 로그인해 주세요."
+      );
+    }
+  } catch (error) {
+    console.error(error);
+    message("가입 처리 중 오류가 발생했습니다.", true);
+  } finally {
+    setLoading(false);
+  }
 }
-async function signIn(){
  const email=$("authEmail").value.trim(), password=$("authPassword").value;
  if(!email||!password)return message("이메일과 비밀번호를 입력해줘.",true);
  const {error}=await sb.auth.signInWithPassword({email,password});
