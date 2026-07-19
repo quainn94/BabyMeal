@@ -27,7 +27,7 @@ textarea{min-height:84px;resize:vertical}
 .ghost{background:#f4f0ef;color:#4b4546}
 .danger{background:#ffe1df;color:var(--danger)}
 .full{width:100%}
-.auth-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.auth-actions{display:grid;grid-template-columns:1fr;gap:8px}
 .msg{min-height:22px;margin-top:10px;color:var(--muted);font-size:13px}
 header{position:sticky;top:0;z-index:20;background:rgba(255,250,248,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
 .top{max-width:1050px;margin:auto;padding:14px 15px 9px;display:flex;align-items:center;justify-content:space-between;gap:12px}
@@ -75,14 +75,13 @@ h2,h3{margin:0 0 12px}
 <div id="authView">
  <div class="auth-card">
   <div class="logo">🥣 BabyMeal</div>
-  <div class="subtitle">PC와 아이폰에서 같은 식단과 재고를 사용해요.</div>
+  <div class="subtitle">등록된 계정으로 로그인해 식단과 재고를 동기화해요.</div>
   <label>이메일</label>
   <input id="authEmail" type="email" autocomplete="email" placeholder="example@email.com">
   <label>비밀번호</label>
   <input id="authPassword" type="password" autocomplete="current-password" minlength="6" placeholder="6자 이상">
   <div class="auth-actions">
    <button class="btn primary" onclick="signIn()">로그인</button>
-   <button class="btn soft" onclick="signUp()">첫 가입</button>
   </div>
   <div id="authMsg" class="msg"></div>
  </div>
@@ -223,74 +222,25 @@ function fail(error){
  alert(error?.message || "처리 중 오류가 발생했어.");
 }
 
-async function signup() {
-  const email = $("authEmail").value.trim().toLowerCase();
-  const password = $("authPassword").value;
-
-  if (!email || password.length < 6) {
-    return message("이메일과 6자 이상 비밀번호를 입력해 주세요.", true);
+async function signIn(){
+ const email=$("authEmail").value.trim().toLowerCase();
+ const password=$("authPassword").value;
+ if(!email||!password)return message("이메일과 비밀번호를 입력해 주세요.",true);
+ setLoading(true);
+ try{
+  const {error}=await sb.auth.signInWithPassword({email,password});
+  if(error){
+   const text=error.message||"";
+   if(/email not confirmed/i.test(text))return message("이메일 인증이 완료되지 않은 계정입니다.",true);
+   if(/invalid login credentials/i.test(text))return message("이메일 또는 비밀번호가 맞지 않습니다.",true);
+   return message("로그인 실패: "+text,true);
   }
-
-  setLoading(true);
-
-  try {
-    const { data, error } = await sb.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: `${window.location.origin}/`
-      }
-    });
-
-    if (error) {
-      const errorText = error.message || "";
-
-      if (
-        error.status === 429 ||
-        /rate limit|too many requests/i.test(errorText)
-      ) {
-        return message(
-          "가입 요청이 너무 많습니다. 잠시 기다린 후 한 번만 다시 시도해 주세요.",
-          true
-        );
-      }
-
-      if (/invalid.*email|email.*invalid/i.test(errorText)) {
-        return message("이메일 주소가 올바른지 다시 확인해 주세요.", true);
-      }
-
-      return message(`가입 실패: ${errorText}`, true);
-    }
-
-    if (
-      data.user &&
-      Array.isArray(data.user.identities) &&
-      data.user.identities.length === 0
-    ) {
-      return message(
-        "이미 가입된 이메일일 수 있습니다. 로그인해 보세요.",
-        true
-      );
-    }
-
-    if (data.session) {
-      message("가입과 로그인이 완료되었습니다.");
-    } else {
-      message(
-        "가입 요청이 완료되었습니다. 이메일 인증 후 로그인해 주세요."
-      );
-    }
-  } catch (error) {
-    console.error(error);
-    message("가입 처리 중 오류가 발생했습니다.", true);
-  } finally {
-    setLoading(false);
-  }
-async function signin(){
- const email=$("authEmail").value.trim(), password=$("authPassword").value;
- if(!email||!password)return message("이메일과 비밀번호를 입력해줘.",true);
- const {error}=await sb.auth.signInWithPassword({email,password});
- if(error)return message("로그인 실패: "+error.message,true);
+ }catch(error){
+  console.error(error);
+  message("로그인 처리 중 오류가 발생했습니다.",true);
+ }finally{
+  setLoading(false);
+ }
 }
 async function signOut(){await sb.auth.signOut()}
 
