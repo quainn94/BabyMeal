@@ -1,4 +1,4 @@
-const CACHE_NAME = 'babymeal-v060-1';
+const CACHE_NAME = 'babymeal-v061-1';
 const APP_SHELL = ['./', './index.html', './style.css', './app.js', './manifest.webmanifest'];
 
 self.addEventListener('install', (event) => {

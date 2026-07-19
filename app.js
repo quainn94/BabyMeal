@@ -274,9 +274,13 @@ const BULK_DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
 
 function renderBulkPlanEditor(loadExisting = false) {
   const days = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
-  $('bulkPlanBody').innerHTML = days.map((date, dayIndex) => {
-    const dateString = toDateString(date);
-    const cells = BULK_SLOTS.map((slot, slotIndex) => {
+  $('bulkPlanHead').innerHTML = `<tr><th>끼니</th>${days.map((date, dayIndex) =>
+    `<th>${BULK_DAY_NAMES[dayIndex]}<span class="bulk-date">${date.getMonth() + 1}/${date.getDate()}</span></th>`
+  ).join('')}</tr>`;
+
+  $('bulkPlanBody').innerHTML = BULK_SLOTS.map((slot, slotIndex) => {
+    const cells = days.map((date, dayIndex) => {
+      const dateString = toDateString(date);
       let value = '';
       if (loadExisting) {
         value = state.plans
@@ -286,7 +290,7 @@ function renderBulkPlanEditor(loadExisting = false) {
       }
       return `<td><textarea class="bulk-plan-input" data-day="${dayIndex}" data-slot="${slotIndex}" aria-label="${BULK_DAY_NAMES[dayIndex]}요일 ${slot}">${esc(value)}</textarea></td>`;
     }).join('');
-    return `<tr><th>${BULK_DAY_NAMES[dayIndex]}<span class="bulk-date">${date.getMonth() + 1}/${date.getDate()}</span></th>${cells}</tr>`;
+    return `<tr><th>${slot}</th>${cells}</tr>`;
   }).join('');
   bindBulkPasteHandlers();
 }
@@ -311,8 +315,8 @@ function bindBulkPasteHandlers() {
     const startSlot = Number(input.dataset.slot);
     table.forEach((row, rowOffset) => {
       row.forEach((value, columnOffset) => {
-        const targetDay = startDay + rowOffset;
-        const targetSlot = startSlot + columnOffset;
+        const targetSlot = startSlot + rowOffset;
+        const targetDay = startDay + columnOffset;
         const target = document.querySelector(`.bulk-plan-input[data-day="${targetDay}"][data-slot="${targetSlot}"]`);
         if (target) target.value = value.trim();
       });
