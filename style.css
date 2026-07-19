@@ -173,3 +173,17 @@ section.active { display: block; animation: fade-in .18s ease; }
   .status-control { grid-template-columns: 1fr; }
   .weekly-head .btn { padding: 8px 9px; font-size: 14px; }
 }
+
+
+.bulk-plan-card .section-title-row { align-items: flex-start; }
+.bulk-help { margin: 16px 0 10px; padding: 10px 12px; border-radius: 13px; background: #fff7d5; color: #705613; }
+.bulk-grid-wrap { overflow-x: auto; }
+.bulk-plan-table { width: 100%; min-width: 760px; border-collapse: separate; border-spacing: 0; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.bulk-plan-table th, .bulk-plan-table td { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 7px; }
+.bulk-plan-table th:last-child, .bulk-plan-table td:last-child { border-right: 0; }
+.bulk-plan-table tr:last-child th, .bulk-plan-table tr:last-child td { border-bottom: 0; }
+.bulk-plan-table thead th { background: #fff0ad; color: #705613; text-align: center; }
+.bulk-plan-table tbody th { width: 72px; background: #fff7d5; color: #705613; text-align: center; }
+.bulk-date { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
+.bulk-plan-input { min-height: 62px; padding: 8px 9px; border-radius: 10px; resize: vertical; line-height: 1.25; }
+.bulk-warning { margin-top: 9px; color: #8c5d1d; }

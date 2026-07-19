@@ -269,6 +269,104 @@ async function addPlan() {
   await loadAll();
 }
 
+const BULK_SLOTS = ['아침', '점심', '간식', '저녁'];
+const BULK_DAY_NAMES = ['일', '월', '화', '수', '목', '금', '토'];
+
+function renderBulkPlanEditor(loadExisting = false) {
+  const days = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
+  $('bulkPlanBody').innerHTML = days.map((date, dayIndex) => {
+    const dateString = toDateString(date);
+    const cells = BULK_SLOTS.map((slot, slotIndex) => {
+      let value = '';
+      if (loadExisting) {
+        value = state.plans
+          .filter((item) => item.meal_date === dateString && item.meal_slot === slot)
+          .map((item) => item.menu_name)
+          .join(' · ');
+      }
+      return `<td><textarea class="bulk-plan-input" data-day="${dayIndex}" data-slot="${slotIndex}" aria-label="${BULK_DAY_NAMES[dayIndex]}요일 ${slot}">${esc(value)}</textarea></td>`;
+    }).join('');
+    return `<tr><th>${BULK_DAY_NAMES[dayIndex]}<span class="bulk-date">${date.getMonth() + 1}/${date.getDate()}</span></th>${cells}</tr>`;
+  }).join('');
+  bindBulkPasteHandlers();
+}
+
+function bulkInputs() {
+  return Array.from(document.querySelectorAll('.bulk-plan-input'));
+}
+
+function parseClipboardTable(text) {
+  return text.replace(/\r/g, '').split('\n')
+    .filter((row, index, rows) => !(index === rows.length - 1 && row === ''))
+    .map((row) => row.split('\t'));
+}
+
+function bindBulkPasteHandlers() {
+  bulkInputs().forEach((input) => input.addEventListener('paste', (event) => {
+    const text = event.clipboardData?.getData('text/plain') || '';
+    if (!text.includes('\t') && !text.includes('\n')) return;
+    event.preventDefault();
+    const table = parseClipboardTable(text);
+    const startDay = Number(input.dataset.day);
+    const startSlot = Number(input.dataset.slot);
+    table.forEach((row, rowOffset) => {
+      row.forEach((value, columnOffset) => {
+        const targetDay = startDay + rowOffset;
+        const targetSlot = startSlot + columnOffset;
+        const target = document.querySelector(`.bulk-plan-input[data-day="${targetDay}"][data-slot="${targetSlot}"]`);
+        if (target) target.value = value.trim();
+      });
+    });
+  }));
+}
+
+function clearBulkPlanEditor() {
+  bulkInputs().forEach((input) => { input.value = ''; });
+}
+
+async function saveBulkPlan() {
+  if (!user) return;
+  if (!confirm('현재 주의 기존 식단을 표 내용으로 교체할까요?')) return;
+
+  const days = Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
+  const rows = [];
+  bulkInputs().forEach((input) => {
+    const menuName = input.value.trim();
+    if (!menuName) return;
+    const dayIndex = Number(input.dataset.day);
+    const slotIndex = Number(input.dataset.slot);
+    rows.push({
+      user_id: user.id,
+      meal_date: toDateString(days[dayIndex]),
+      meal_slot: BULK_SLOTS[slotIndex],
+      menu_name: menuName
+    });
+  });
+
+  setLoading(true);
+  try {
+    const weekEnd = toDateString(days[6]);
+    const weekStartString = toDateString(days[0]);
+    const { error: deleteError } = await sb.from('meal_plans')
+      .delete()
+      .gte('meal_date', weekStartString)
+      .lte('meal_date', weekEnd);
+    if (deleteError) throw deleteError;
+
+    if (rows.length) {
+      const { error: insertError } = await sb.from('meal_plans').insert(rows);
+      if (insertError) throw insertError;
+    }
+    await loadAll();
+    renderBulkPlanEditor(true);
+    alert('이번 주 식단을 저장했어요.');
+  } catch (error) {
+    fail(error);
+  } finally {
+    setLoading(false);
+  }
+}
+
 async function addShopping() {
   const name = $('shopName').value.trim();
   if (!name) return;
@@ -360,6 +458,7 @@ function renderWeeklyPlan() {
   }).join('');
 
   $('weeklyTable').innerHTML = `<table class="weekly-table"><thead><tr><th>구분</th>${headers}</tr></thead><tbody>${rows}</tbody></table>`;
+  if (!$('bulkPlanPanel').classList.contains('hidden')) renderBulkPlanEditor(true);
 }
 
 function renderShopping() {
@@ -443,6 +542,16 @@ function bindEvents() {
   }));
 
   $('planAddButton').addEventListener('click', addPlan);
+  $('toggleBulkPlanButton').addEventListener('click', () => {
+    const panel = $('bulkPlanPanel');
+    const willOpen = panel.classList.contains('hidden');
+    panel.classList.toggle('hidden');
+    $('toggleBulkPlanButton').textContent = willOpen ? '표 닫기' : '표 열기';
+    if (willOpen) renderBulkPlanEditor(true);
+  });
+  $('loadCurrentWeekButton').addEventListener('click', () => renderBulkPlanEditor(true));
+  $('clearBulkPlanButton').addEventListener('click', clearBulkPlanEditor);
+  $('saveBulkPlanButton').addEventListener('click', saveBulkPlan);
   $('prevWeekButton').addEventListener('click', () => { weekStart = addDays(weekStart, -7); renderWeeklyPlan(); });
   $('nextWeekButton').addEventListener('click', () => { weekStart = addDays(weekStart, 7); renderWeeklyPlan(); });
   $('shoppingAddButton').addEventListener('click', addShopping);
