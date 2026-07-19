@@ -1,9 +1,10 @@
 {
   "name": "BabyMeal",
   "short_name": "BabyMeal",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
-  "background_color": "#fffaf8",
-  "theme_color": "#f8b8c4",
-  "icons": []
+  "background_color": "#fffaf0",
+  "theme_color": "#f7d978",
+  "lang": "ko-KR",
+  "description": "유아식 식단과 재고 관리 웹앱"
 }

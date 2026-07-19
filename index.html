@@ -3,11 +3,11 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#f8b8c4">
+  <meta name="theme-color" content="#f7d978">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="BabyMeal">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="style.css">
   <title>BabyMeal</title>
 </head>
 <body>
@@ -16,7 +16,7 @@
   <div id="authView">
     <div class="auth-card">
       <div class="logo">🥣 BabyMeal</div>
-      <div class="subtitle">PC와 아이폰에서 같은 식단과 재고를 사용해요.</div>
+      <div class="subtitle">도아의 유아식과 재고를 한곳에서 관리해요.</div>
       <label for="authEmail">이메일</label>
       <input id="authEmail" type="email" autocomplete="email" placeholder="example@email.com">
       <label for="authPassword">비밀번호</label>
@@ -27,97 +27,63 @@
   </div>
 
   <div id="appView" class="hidden">
-    <header>
-      <div class="top">
-        <div>
-          <div class="brand">🥣 BabyMeal</div>
-          <div class="meta"><span class="status-dot"></span>Supabase 동기화</div>
-        </div>
-        <div class="account-box">
-          <div id="accountEmail" class="account"></div>
-          <button class="btn ghost" type="button" id="logoutButton">로그아웃</button>
-        </div>
+    <header class="app-header">
+      <div>
+        <div class="brand">🥣 BabyMeal</div>
+        <div class="meta"><span class="status-dot"></span>Supabase 동기화</div>
       </div>
-      <nav>
-        <button class="active" data-tab="home">🏠 홈</button>
-        <button data-tab="ingredients">🧊 재고</button>
-        <button data-tab="menus">🍽️ 메뉴</button>
-        <button data-tab="plan">📅 주간 식단</button>
-        <button data-tab="shopping">🛒 장보기</button>
-        <button data-tab="settings">⚙️ 설정</button>
-      </nav>
+      <div class="account-box">
+        <div id="accountEmail" class="account"></div>
+        <button class="btn ghost compact" type="button" id="logoutButton">로그아웃</button>
+      </div>
     </header>
 
     <main>
       <section id="home" class="active">
-        <div class="grid">
-          <div class="metric pink">재고<strong id="mIngredients">0</strong><small>개 항목</small></div>
-          <div class="metric mint">메뉴<strong id="mMenus">0</strong><small>개 저장</small></div>
-          <div class="metric lavender">오늘 식단<strong id="mToday">0</strong><small>끼</small></div>
-          <div class="metric yellow">장보기<strong id="mShopping">0</strong><small>개 남음</small></div>
+        <div class="hero-card">
+          <div class="eyebrow">오늘의 이유식</div>
+          <div id="homeDate" class="hero-date"></div>
+          <div id="todayMeals" class="today-meals"></div>
         </div>
-        <div class="card"><h3>오늘 식단</h3><div id="todayMeals"></div></div>
-        <div class="notice">한 기기에서 수정하면 서버에 저장되고 다른 기기에서도 같은 계정으로 확인할 수 있어요.</div>
-      </section>
 
-      <section id="ingredients">
-        <div class="card">
-          <h3 id="ingredientFormTitle">식재료 추가</h3>
-          <input id="ingredientEditId" type="hidden">
-          <input id="ingName" placeholder="식재료명">
-          <div class="row">
-            <select id="ingCategory">
-              <option>채소/과일</option><option>육류</option><option>수산/해산/건어물</option>
-              <option>곡/두부/쌀/견과</option><option>정육/계란/유제품</option><option>면</option>
-              <option>장/조미료</option><option>간편식/조리식품</option><option>반찬/김치</option><option>기타</option>
-            </select>
-            <select id="ingPlace"><option>냉장</option><option>냉동</option><option>상온</option></select>
-          </div>
-          <div class="row3">
-            <input id="ingQty" type="number" min="0" max="99999" step="0.1" value="1" placeholder="총 수량">
-            <select id="ingUnit"><option>개</option><option>g</option><option>ml</option><option>팩</option><option>봉</option><option>병</option></select>
-            <input id="ingExpiry" type="date" aria-label="유통기한">
-          </div>
-          <div class="subsection-title">소분 정보 <span class="meta">(선택)</span></div>
-          <div class="row3">
-            <input id="ingPortionAmount" type="number" min="0" step="0.1" placeholder="1개당 용량 예: 50">
-            <select id="ingPortionUnit"><option>g</option><option>ml</option><option>개</option><option>팩</option><option>봉</option></select>
-            <input id="ingPortionCount" type="number" min="0" step="1" placeholder="소분 개수 예: 3">
-          </div>
-          <div class="toolbar">
-            <button class="btn primary" type="button" id="ingredientSaveButton">추가</button>
-            <button class="btn ghost hidden" type="button" id="ingredientCancelButton">수정 취소</button>
-          </div>
+        <div class="dashboard-grid">
+          <button class="dashboard-card" type="button" data-jump="ingredients">
+            <span class="dashboard-icon">⏳</span>
+            <span class="dashboard-label">유통기한 임박</span>
+            <strong id="mExpirySoon">0</strong>
+          </button>
+          <button class="dashboard-card" type="button" data-jump="ingredients" data-filter-jump="조리 필요">
+            <span class="dashboard-icon">🍳</span>
+            <span class="dashboard-label">조리 필요</span>
+            <strong id="mNeedCooking">0</strong>
+          </button>
+          <button class="dashboard-card" type="button" data-jump="shopping">
+            <span class="dashboard-icon">🛒</span>
+            <span class="dashboard-label">장보기</span>
+            <strong id="mShopping">0</strong>
+          </button>
+          <button class="dashboard-card" type="button" data-jump="plan">
+            <span class="dashboard-icon">📅</span>
+            <span class="dashboard-label">오늘 식단</span>
+            <strong id="mToday">0</strong>
+          </button>
         </div>
-        <div class="toolbar filter-toolbar">
-          <button class="btn ghost" data-filter="전체">전체</button>
-          <button class="btn ghost" data-filter="냉장">냉장</button>
-          <button class="btn ghost" data-filter="냉동">냉동</button>
-          <button class="btn ghost" data-filter="상온">상온</button>
-          <button class="btn ghost" data-filter="소진">소진</button>
-        </div>
-        <div id="ingredientList"></div>
-      </section>
 
-      <section id="menus">
         <div class="card">
-          <h3 id="menuFormTitle">메뉴 저장</h3>
-          <input id="menuEditId" type="hidden">
-          <input id="menuName" placeholder="메뉴명">
-          <input id="menuIngredients" placeholder="재료 메모">
-          <div class="row3">
-            <input id="menuExpiry" type="date" aria-label="유통기한">
-            <input id="menuTotalQty" type="number" min="0" step="0.1" placeholder="완제품 총량">
-            <select id="menuTotalUnit"><option>g</option><option>ml</option><option>개</option><option>팩</option><option>회분</option></select>
+          <div class="section-title-row">
+            <h3>유통기한이 가까워요</h3>
+            <button class="text-button" type="button" data-jump="ingredients">재고 보기</button>
           </div>
-          <select id="menuReaction"><option>반응 미기록</option><option>잘 먹음</option><option>보통</option><option>거부</option></select>
-          <textarea id="menuMemo" placeholder="조리법 또는 메모"></textarea>
-          <div class="toolbar">
-            <button class="btn primary" type="button" id="menuSaveButton">저장</button>
-            <button class="btn ghost hidden" type="button" id="menuCancelButton">수정 취소</button>
-          </div>
+          <div id="expirySoonList"></div>
         </div>
-        <div id="menuList"></div>
+
+        <div class="card">
+          <div class="section-title-row">
+            <h3>조리해야 해요</h3>
+            <button class="text-button" type="button" data-jump="ingredients" data-filter-jump="조리 필요">모두 보기</button>
+          </div>
+          <div id="needCookingList"></div>
+        </div>
       </section>
 
       <section id="plan">
@@ -126,12 +92,9 @@
           <div class="row3">
             <input id="planDate" type="date">
             <select id="planSlot"><option>아침</option><option>점심</option><option>간식</option><option>저녁</option></select>
-            <select id="planMenu"></select>
+            <input id="planCustom" placeholder="메뉴 또는 음식 입력">
           </div>
-          <div class="row">
-            <input id="planCustom" placeholder="또는 직접 메뉴 입력">
-            <button class="btn primary" type="button" id="planAddButton">추가</button>
-          </div>
+          <button class="btn primary full" type="button" id="planAddButton">식단에 추가</button>
         </div>
         <div class="weekly-wrap card">
           <div class="weekly-head">
@@ -143,25 +106,75 @@
         </div>
       </section>
 
+      <section id="ingredients">
+        <div class="card">
+          <h3 id="ingredientFormTitle">재고 추가</h3>
+          <input id="ingredientEditId" type="hidden">
+          <label for="ingName">품목명</label>
+          <input id="ingName" placeholder="예: 닭안심, 바나나, 닭고기볶음밥">
+
+          <label for="ingCategory">분류</label>
+          <select id="ingCategory">
+            <option>육류</option><option>가금류</option><option>채소</option><option>과일</option>
+            <option>해산물</option><option>실온 간식</option><option>냉동 간식</option><option>완제품</option><option>기타</option>
+          </select>
+
+          <fieldset class="status-fieldset">
+            <legend>상태</legend>
+            <div class="status-control" id="statusControl">
+              <button class="status-option selected" type="button" data-status="구매" aria-pressed="true"><span>🛒</span>구매</button>
+              <button class="status-option" type="button" data-status="소분" aria-pressed="false"><span>🔪</span>소분</button>
+              <button class="status-option" type="button" data-status="조리 필요" aria-pressed="false"><span>🍳</span>조리 필요</button>
+            </div>
+          </fieldset>
+          <input id="ingStatus" type="hidden" value="구매">
+
+          <label for="ingExpiry">유통기한</label>
+          <input id="ingExpiry" type="date" aria-label="유통기한">
+
+          <div class="subsection-title">소분 정보 <span class="meta">(선택)</span></div>
+          <div class="row3">
+            <input id="ingPortionAmount" type="number" min="0" step="0.1" placeholder="1개당 용량 예: 50">
+            <select id="ingPortionUnit"><option>g</option><option>ml</option><option>개</option><option>팩</option><option>봉</option></select>
+            <input id="ingPortionCount" type="number" min="0" step="1" placeholder="소분 개수 예: 3">
+          </div>
+
+          <div class="toolbar">
+            <button class="btn primary" type="button" id="ingredientSaveButton">추가</button>
+            <button class="btn ghost hidden" type="button" id="ingredientCancelButton">수정 취소</button>
+          </div>
+        </div>
+
+        <div class="filter-scroll" id="ingredientFilters">
+          <button class="filter-chip active" data-filter="전체" type="button">전체</button>
+          <button class="filter-chip" data-filter="구매" type="button">구매</button>
+          <button class="filter-chip" data-filter="소분" type="button">소분</button>
+          <button class="filter-chip" data-filter="조리 필요" type="button">조리 필요</button>
+          <button class="filter-chip" data-filter="완제품" type="button">완제품</button>
+          <button class="filter-chip" data-filter="소진" type="button">소진</button>
+        </div>
+        <div id="ingredientList"></div>
+      </section>
+
       <section id="shopping">
         <div class="card">
           <h3>장보기 추가</h3>
-          <div class="row"><input id="shopName" placeholder="구매할 식재료"><button class="btn primary" type="button" id="shoppingAddButton">추가</button></div>
+          <div class="row"><input id="shopName" placeholder="구매할 품목"><button class="btn primary" type="button" id="shoppingAddButton">추가</button></div>
         </div>
         <div class="card"><h3>구매 전</h3><div id="shoppingPendingList"></div></div>
         <div class="card completed-card"><h3>구매 완료</h3><div id="shoppingCompletedList"></div></div>
       </section>
-
-      <section id="settings">
-        <div class="card">
-          <h3>새로고침</h3>
-          <button class="btn ghost" type="button" id="reloadButton">서버 데이터 다시 불러오기</button>
-        </div>
-      </section>
     </main>
+
+    <nav class="bottom-nav" aria-label="주요 메뉴">
+      <button class="bottom-tab active" data-tab="home" type="button"><span class="tab-icon">⌂</span><span>홈</span></button>
+      <button class="bottom-tab" data-tab="plan" type="button"><span class="tab-icon">▦</span><span>주간 식단</span></button>
+      <button class="bottom-tab" data-tab="ingredients" type="button"><span class="tab-icon inventory-icon">🧺</span><span>재고</span></button>
+      <button class="bottom-tab" data-tab="shopping" type="button"><span class="tab-icon">🛒</span><span>장보기</span></button>
+    </nav>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
