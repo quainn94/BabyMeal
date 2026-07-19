@@ -1,0 +1,9 @@
+{
+  "name": "BabyMeal",
+  "short_name": "BabyMeal",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#fffaf8",
+  "theme_color": "#f8b8c4",
+  "description": "유아식 식단과 냉장고 재고 관리"
+}
