@@ -1,12 +1,19 @@
-BabyMeal v0.3 Cloud
+BabyMeal v0.4
 
-1. Supabase Dashboard → SQL Editor → New query
-2. setup_babymeal.sql 전체를 붙여넣고 Run
-3. Netlify 기존 프로젝트의 프로덕션 배포 영역에 BabyMeal_v0.3_cloud.zip 업로드
-4. 사이트에서 '첫 가입' 후 로그인
-5. PC와 아이폰에서 같은 이메일 계정으로 로그인
+적용 순서
+1. Supabase SQL Editor에서 setup_babymeal_v04.sql 실행
+2. GitHub BabyMeal 저장소의 기존 파일을 백업
+3. 이 폴더의 index.html, css 폴더, js 폴더, manifest.webmanifest, sw.js를 저장소 최상위에 업로드
+4. Commit 후 Netlify 자동 배포 확인
+5. 강력 새로고침(Ctrl+Shift+R)
 
-주의
-- setup_babymeal.sql에 Secret key는 들어 있지 않습니다.
-- index.html에는 공개용 Project URL과 Publishable key만 포함되어 있습니다.
-- 이메일 확인이 켜져 있으면 가입 후 받은 확인 메일을 먼저 눌러야 합니다.
+주요 기능
+- 상단 탭 아이콘
+- 재고 소분 정보(예: 50g × 3)
+- 재고/메뉴 수정
+- 위클리 주간 식단 UI
+- 장보기 구매 완료 영역
+- 메뉴 유통기한/완제품 총량
+- 재고/메뉴 유통기한 필수
+- 기한 경과 문구 빨간색 표시
+- 로그인 전용(회원가입 없음)
