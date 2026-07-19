@@ -286,7 +286,7 @@ async function signup() {
   } finally {
     setLoading(false);
   }
-}
+async function signin(){
  const email=$("authEmail").value.trim(), password=$("authPassword").value;
  if(!email||!password)return message("이메일과 비밀번호를 입력해줘.",true);
  const {error}=await sb.auth.signInWithPassword({email,password});
