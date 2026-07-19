@@ -305,12 +305,41 @@ function parseClipboardTable(text) {
     .map((row) => row.split('\t'));
 }
 
+function clipboardCellText(cell) {
+  const clone = cell.cloneNode(true);
+  clone.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+  clone.querySelectorAll('div, p').forEach((block) => {
+    if (block.nextSibling) block.append('\n');
+  });
+  return (clone.textContent || '')
+    .replace(/\u00a0/g, ' ')
+    .replace(/\r/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .join('\n')
+    .trim();
+}
+
+function parseClipboardHtml(html) {
+  if (!html) return null;
+  const documentFromClipboard = new DOMParser().parseFromString(html, 'text/html');
+  const rows = Array.from(documentFromClipboard.querySelectorAll('table tr'));
+  if (!rows.length) return null;
+  return rows.map((row) => Array.from(row.querySelectorAll(':scope > th, :scope > td')).map(clipboardCellText));
+}
+
 function bindBulkPasteHandlers() {
   bulkInputs().forEach((input) => input.addEventListener('paste', (event) => {
-    const text = event.clipboardData?.getData('text/plain') || '';
-    if (!text.includes('\t') && !text.includes('\n')) return;
+    const clipboard = event.clipboardData;
+    const html = clipboard?.getData('text/html') || '';
+    const text = clipboard?.getData('text/plain') || '';
+    const htmlTable = parseClipboardHtml(html);
+    const table = htmlTable || parseClipboardTable(text);
+    const isMultiCellPaste = Boolean(htmlTable) || text.includes('\t') || text.includes('\n');
+    if (!isMultiCellPaste || !table.length) return;
+
     event.preventDefault();
-    const table = parseClipboardTable(text);
     const startDay = Number(input.dataset.day);
     const startSlot = Number(input.dataset.slot);
     table.forEach((row, rowOffset) => {

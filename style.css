@@ -187,3 +187,6 @@ section.active { display: block; animation: fade-in .18s ease; }
 .bulk-date { display: block; margin-top: 2px; color: var(--muted); font-size: 13px; }
 .bulk-plan-input { min-height: 62px; padding: 8px 9px; border-radius: 10px; resize: vertical; line-height: 1.25; }
 .bulk-warning { margin-top: 9px; color: #8c5d1d; }
+
+/* v0.6.2: 식단 셀 내부 줄바꿈 표시 */
+.weekly-entry, .today-meal { white-space: pre-line; }
