@@ -437,6 +437,51 @@ function ingredientMatchesFilter(item) {
   return item.status === ingredientFilter && !item.depleted;
 }
 
+function splitMenuLines(value) {
+  return String(value || '')
+    .replace(/\r/g, '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function menuLinesHtml(value, className = 'menu-line') {
+  return splitMenuLines(value).map((line) => `<span class="${className}">${esc(line)}</span>`).join('');
+}
+
+async function editWeeklyCell(mealDate, mealSlot) {
+  const entries = state.plans.filter((item) => item.meal_date === mealDate && item.meal_slot === mealSlot);
+  const currentValue = entries.map((item) => item.menu_name).filter(Boolean).join('\n');
+  const nextValue = window.prompt(`${mealDate} ${mealSlot} 식단\n메뉴별로 줄을 나눠 입력하세요. 모두 지우고 확인하면 식단이 삭제됩니다.`, currentValue);
+  if (nextValue === null) return;
+
+  setLoading(true);
+  try {
+    const { error: deleteError } = await sb.from('meal_plans')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('meal_date', mealDate)
+      .eq('meal_slot', mealSlot);
+    if (deleteError) throw deleteError;
+
+    const cleaned = splitMenuLines(nextValue).join('\n');
+    if (cleaned) {
+      const { error: insertError } = await sb.from('meal_plans').insert({
+        user_id: user.id,
+        meal_date: mealDate,
+        meal_slot: mealSlot,
+        menu_name: cleaned
+      });
+      if (insertError) throw insertError;
+    }
+    await loadAll();
+  } catch (error) {
+    fail(error);
+  } finally {
+    setLoading(false);
+  }
+}
+
 function renderIngredients() {
   const list = state.ingredients.filter(ingredientMatchesFilter);
   $('ingredientList').innerHTML = list.length ? list.map((item) => {
@@ -483,9 +528,10 @@ function renderWeeklyPlan() {
       const dateString = toDateString(date);
       const isToday = dateString === today;
       const entries = state.plans.filter((item) => item.meal_date === dateString && item.meal_slot === slot);
-      return `<td class="${isToday ? 'today-column' : ''}"><div class="weekly-cell">
-        ${entries.length ? entries.map((item) => `<div class="weekly-entry">${esc(item.menu_name)}<button class="delete-mini" type="button" onclick="removeRow('meal_plans','${item.id}')">삭제</button></div>`).join('') : '<div class="meta">비어 있음</div>'}
-      </div></td>`;
+      const combinedMenu = entries.map((item) => item.menu_name).filter(Boolean).join('\n');
+      return `<td class="${isToday ? 'today-column' : ''}"><button class="weekly-cell-button" type="button" onclick="editWeeklyCell('${dateString}','${slot}')" aria-label="${dateString} ${slot} 식단 수정">
+        ${combinedMenu ? menuLinesHtml(combinedMenu, 'weekly-menu-line') : '<span class="weekly-empty">비어 있음</span>'}
+      </button></td>`;
     }).join('');
     return `<tr><td>${slot}</td>${cells}</tr>`;
   }).join('');
@@ -521,7 +567,12 @@ function renderHome() {
   $('homeDate').textContent = todayDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'long' });
 
   const todayMeals = state.plans.filter((item) => item.meal_date === today);
-  $('todayMeals').innerHTML = todayMeals.length ? todayMeals.map((item) => `<div class="today-meal"><strong>${esc(item.meal_slot)}</strong> · ${esc(item.menu_name)}</div>`).join('') : '<div class="empty">오늘 식단이 아직 비어 있어요.</div>';
+  const slotOrder = ['아침', '점심', '간식', '저녁'];
+  $('todayMeals').innerHTML = todayMeals.length ? slotOrder.map((slot) => {
+    const values = todayMeals.filter((item) => item.meal_slot === slot).map((item) => item.menu_name).filter(Boolean);
+    if (!values.length) return '';
+    return `<div class="today-meal"><div class="today-meal-slot">${esc(slot)}</div><div class="today-meal-menu">${menuLinesHtml(values.join('\n'), 'today-menu-line')}</div></div>`;
+  }).join('') : '<div class="empty">오늘 식단이 아직 비어 있어요.</div>';
 
   const activeIngredients = state.ingredients.filter((item) => !item.depleted);
   const expirySoon = activeIngredients
@@ -536,7 +587,6 @@ function renderHome() {
   $('mExpirySoon').textContent = expirySoon.length;
   $('mNeedCooking').textContent = needCooking.length;
   $('mShopping').textContent = pendingShopping.length;
-  $('mToday').textContent = todayMeals.length;
 
   $('expirySoonList').innerHTML = expirySoon.length ? `<div class="mini-list">${expirySoon.slice(0, 5).map((item) => `<div class="mini-row"><span>${esc(item.name)}</span><span>${expiryHtml(item.expiry_date)}</span></div>`).join('')}</div>` : '<div class="empty">임박한 재고가 없어요.</div>';
   $('needCookingList').innerHTML = needCooking.length ? `<div class="mini-list">${needCooking.slice(0, 5).map((item) => `<div class="mini-row"><span>${esc(item.name)}</span><span>${esc(item.category)}</span></div>`).join('')}</div>` : '<div class="empty">조리할 품목이 없어요.</div>';
